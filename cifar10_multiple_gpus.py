@@ -66,21 +66,18 @@ def get_gpu_utilization():
     return gpu_utilization
 
 def main(epochs, batch_size, gpu_count):
+    # Set mixed precision policy
+    mixed_precision_policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
+    tf.keras.mixed_precision.experimental.set_policy(mixed_precision_policy)
+
+    # Enable XLA compilation
+    tf.config.optimizer.set_jit(True)
+
     # Seed
     seed_everything(42)
 
-    # Ensure TensorFlow is using GPU
-    #print("\nGPU available, ", tf.config.list_physical_devices('GPU'))
-
     # Load and preprocess data
     x_train, y_train, x_test, y_test, num_classes = preprocess_data()
-
-    # Create model
-    #model = define_model(num_classes)
-
-    # Hyperparameters --------------------------------
-    #epochs = 100
-    #batch_size = 256
 
     # Define strategy
     devices = ["/gpu:0", "/gpu:1", "/gpu:2", "/gpu:3"]
