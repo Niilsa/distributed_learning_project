@@ -66,9 +66,9 @@ def get_gpu_utilization():
     return gpu_utilization
 
 def main(epochs, batch_size, gpu_count):
-    # Set mixed precision policy
-    mixed_precision_policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
-    tf.keras.mixed_precision.experimental.set_policy(mixed_precision_policy)
+    # Enable mixed precision policy
+    mixed_precision_policy = tf.keras.mixed_precision.Policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy(mixed_precision_policy)
 
     # Enable XLA compilation
     tf.config.optimizer.set_jit(True)
