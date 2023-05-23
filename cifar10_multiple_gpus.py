@@ -65,7 +65,7 @@ def get_gpu_utilization():
     gpu_utilization = result.stdout.strip().split('\n')
     return gpu_utilization
 
-def main(epochs, batch_size):
+def main(epochs, batch_size, gpu_count):
     # Seed
     seed_everything(42)
 
@@ -83,7 +83,9 @@ def main(epochs, batch_size):
     #batch_size = 256
 
     # Define strategy
-    strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1", "/gpu:2", "/gpu:3"])
+    devices = ["/gpu:0", "/gpu:1", "/gpu:2", "/gpu:3"]
+    devices = devices[:gpu_count]
+    strategy = tf.distribute.MirroredStrategy(devices=devices)
 
     with strategy.scope():
         # Create and compile the model within the strategy scope
@@ -109,7 +111,9 @@ def main(epochs, batch_size):
     # Print training results
     sys.stdout = original_stdout
     print(f"""
+    batch_size = {batch_size}
     epochs = {epochs}
+    amount of gpu = {gpu_count}
 
     accuracy = {test_accuracy:.2f},
     precision = {test_precision:.2f},
@@ -132,8 +136,9 @@ def main(epochs, batch_size):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Training script')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    parser.add_argument('--epochs', type=int, default=64, help='Number of epochs')
+    parser.add_argument('--batch_size', type=int, default=256, help='Batch size')
+    parser.add_argument('--gpu_count', type=int, default=4, help='Number of GPUs to use')
     args = parser.parse_args()
 
-    main(args.epochs, args.batch_size)
+    main(args.epochs, args.batch_size, args.gpu_count)
