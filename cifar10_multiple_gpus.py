@@ -1,6 +1,8 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
+import argparse
+import subprocess
 
 import time
 import tensorflow as tf
@@ -57,22 +59,35 @@ def define_model(num_classes=10):
 
     return model
 
-def main():
+def get_gpu_utilization():
+    # Run nvidia-smi command to get GPU utilization information
+    result = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader'], capture_output=True, text=True)
+    gpu_utilization = result.stdout.strip().split('\n')
+    return gpu_utilization
+
+def main(epochs, batch_size):
     # Seed
     seed_everything(42)
 
     # Ensure TensorFlow is using GPU
-    print("\nGPU available, ", tf.config.list_physical_devices('GPU'))
+    #print("\nGPU available, ", tf.config.list_physical_devices('GPU'))
 
     # Load and preprocess data
     x_train, y_train, x_test, y_test, num_classes = preprocess_data()
 
     # Create model
-    model = define_model(num_classes)
+    #model = define_model(num_classes)
 
     # Hyperparameters --------------------------------
-    batch_size = 64
-    epochs = 2
+    #epochs = 100
+    #batch_size = 256
+
+    # Define strategy
+    strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1", "/gpu:2", "/gpu:3"])
+
+    with strategy.scope():
+        # Create and compile the model within the strategy scope
+        model = define_model(num_classes)
 
     # Redirect sys.stdout to the file
     original_stdout = sys.stdout
@@ -94,6 +109,8 @@ def main():
     # Print training results
     sys.stdout = original_stdout
     print(f"""
+    epochs = {epochs}
+
     accuracy = {test_accuracy:.2f},
     precision = {test_precision:.2f},
     recall = {test_recall:.2f},
@@ -101,12 +118,22 @@ def main():
     """)
     print(f'training time: {training_time:.2f} seconds')
 
-    # Search for GPU device and print its name
-    local_devices = device_lib.list_local_devices()
-    for device in local_devices:
-        if device.device_type == "GPU":
-            print("GPU name:", device.physical_device_desc)
+    # Get GPU utilization statistics
+    gpu_utilization = get_gpu_utilization()
+
+    # Print GPU utilization for each GPU
+    print("\nGPU utilization:")
+    for i, utilization in enumerate(gpu_utilization):
+        print(f"GPU {i}: {utilization}%")
     
     print('\n\n\n-----------------------------------')
 
-main()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Training script')
+    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    args = parser.parse_args()
+
+    main(args.epochs, args.batch_size)
